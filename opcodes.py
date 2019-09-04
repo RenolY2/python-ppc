@@ -1,3 +1,8 @@
+def validate(assertion):
+    if not assertion:
+        raise RuntimeError("Invalid Instruction Form")
+
+
 def get_bits(val, start, end):
     size = end-start 
     
@@ -110,7 +115,9 @@ class LoadByteZero(LoadValueZero):
 
 class LoadByteZeroUpdate(LoadValueZero):
     def execute(self, machine):
-        EA = self._get_ea(machine)
+        gpr = machine.context.gpr
+        EA = add_32bit(gpr[self.RA] + self.D)
+        
         machine.context.gpr[self.RT] = machine.readbyte(EA)
         self.context.gpr[self.RA] = EA 
     
@@ -121,7 +128,7 @@ class LoadByteZeroUpdate(LoadValueZero):
 class LoadHalfwordZero(LoadValueZero):
     def execute(self, machine):
         EA = self._get_ea(machine)
-        machine.context.gpr[self.RT] = machine.readshort(EA)
+        machine.context.gpr[self.RT] = machine.readhalfword(EA)
         self.context.gpr[self.RA] = EA 
     
     def __str__(self):
@@ -129,24 +136,68 @@ class LoadHalfwordZero(LoadValueZero):
 
 
 class LoadHalfwordZeroUpdate(LoadValueZero):
+    def __init__(self, val):
+        super().__init__(val)
+        validate(self.RA != 0 and self.RA != self.RT)
+        
     def execute(self, machine):
-        EA = self._get_ea(machine)
-        machine.context.gpr[self.RT] = machine.readshort(EA)
+        gpr = machine.context.gpr
+        EA = add_32bit(gpr[self.RA] + self.D)
+        
+        machine.context.gpr[self.RT] = machine.readhalfword(EA)
         self.context.gpr[self.RA] = EA 
     
     def __str__(self):
         return "lhzu r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
 
 
-class LoadByteZeroUpdate(LoadByteZero):
+class LoadHalfwordAlgebraic(LoadByteZero):
     def execute(self, machine):
         gpr = machine.context.gpr
-        
         EA = add_32bit(gpr[self.RA] + self.D)
         
-        gpr[self.rt] = machine.readbyte(EA)
-        gpr[self.RA] = EA 
+        gpr[self.rt] = sign_extend_short(machine.readhalfword(EA))
+    
+    def __str__(self):
+        return "lha r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
+
+
+class LoadHalfwordAlgebraicUpdate(LoadByteZero):
+    def __init__(self, val):
+        super().__init__(val)
+        validate(self.RA != 0 and self.RA != self.RT) 
         
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        EA = add_32bit(gpr[self.RA] + self.D)
+        
+        gpr[self.rt] = sign_extend_short(machine.readhalfword(EA))
+        self.context.gpr[self.RA] = EA
+        
+    def __str__(self):
+        return "lhau r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
+
+
+class LoadWordZero(LoadValueZero):
+    def execute(self, machine):
+        EA = self._get_ea(machine)
+        machine.context.gpr[self.RT] = machine.readword(EA) 
+    
+    def __str__(self):
+        return "lwz r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
+
+
+class LoadWordZeroUpdate(LoadValueZero):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        EA = add_32bit(gpr[self.RA] + self.D)
+        
+        machine.context.gpr[self.RT] = machine.readword(EA)
+        self.context.gpr[self.RA] = EA 
+    
+    def __str__(self):
+        return "lwzu r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
+
 if __name__ == "__main__":
     lbz = LoadByteZero(0x80a400d8)
     print(lbz)
