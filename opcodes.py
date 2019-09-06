@@ -100,8 +100,6 @@ class LoadValueZero(Instruction):
         EA = add_32bit(b + self.D)
         
         return EA 
-        
-        gpr[self.rt] = machine.readbyte(EA)
 
 
 class LoadByteZero(LoadValueZero):
@@ -192,11 +190,116 @@ class LoadWordZeroUpdate(LoadValueZero):
         gpr = machine.context.gpr
         EA = add_32bit(gpr[self.RA] + self.D)
         
-        machine.context.gpr[self.RT] = machine.readword(EA)
-        self.context.gpr[self.RA] = EA 
+        gpr[self.RT] = machine.readword(EA)
+        gpr[self.RA] = EA 
     
     def __str__(self):
         return "lwzu r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
+
+
+####################
+class LoadValueZeroIndexed(Instruction):
+    def __init__(self, val):
+        self.opcode, self.RT, self.RA, self.RB, self.subopcode, _ = parse_xform(val)
+        
+    def _get_ea(self, machine):
+        gpr = machine.context.gpr
+        
+        if self.RA == 0:
+            b = 0 
+        else:
+            b = gpr[self.RA] 
+        
+        EA = add_32bit(b + gpr[self.RB])
+        
+        return EA 
+
+# Byte Indexed
+class LoadByteZeroIndexed(LoadValueZeroIndexed):
+    def execute(self, machine):
+        EA = self._get_ea(machine)
+        machine.context.gpr[self.RT] = machine.readbyte(EA)
+
+    def __str__(self):
+        return "lbzx r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
+    
+    
+class LoadByteZeroUpdateIndexed(LoadValueZeroIndexed):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA] + gpr[self.RB])
+        gpr[self.RT] = machine.readbyte(EA)
+        gpr[self.RA] = EA 
+        
+    def __str__(self):
+        return "lbzux r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
+        
+# Halfword Indexed
+class LoadHalfwordZeroIndexed(LoadValueZeroIndexed):
+    def execute(self, machine):
+        EA = self._get_ea(machine)
+        machine.context.gpr[self.RT] = machine.readhalfword(EA)
+
+    def __str__(self):
+        return "lhzx r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
+    
+    
+class LoadHalfwordZeroUpdateIndexed(LoadValueZeroIndexed):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA] + gpr[self.RB])
+        gpr[self.RT] = machine.readhalfword(EA)
+        gpr[self.RA] = EA 
+        
+    def __str__(self):
+        return "lhzux r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
+
+
+class LoadHalfwordAlgebraicIndexed(LoadValueZeroIndexed):
+    def execute(self, machine):
+        EA = self._get_ea(machine)
+        machine.context.gpr[self.RT] = sign_extend_short(machine.readhalfword(EA))
+
+    def __str__(self):
+        return "lhax r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
+    
+    
+class LoadHalfwordAlgebraicUpdateIndexed(LoadValueZeroIndexed):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA] + gpr[self.RB])
+        gpr[self.RT] = sign_extend_short(machine.readhalfword(EA))
+        gpr[self.RA] = EA 
+        
+    def __str__(self):
+        return "lhaux r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
+
+# Word Indexed
+class LoadWordIndexed(LoadValueZeroIndexed):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA] + gpr[self.RB])
+        gpr[self.RT] = machine.readword(EA)
+        gpr[self.RA] = EA 
+        
+    def __str__(self):
+        return "lwzx r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
+
+class LoadWordUpdateIndexed(LoadValueZeroIndexed):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA] + gpr[self.RB])
+        gpr[self.RT] = sign_extend_short(machine.readhalfword(EA))
+        gpr[self.RA] = EA 
+        
+    def __str__(self):
+        return "lwzux r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
+
 
 if __name__ == "__main__":
     lbz = LoadByteZero(0x80a400d8)
