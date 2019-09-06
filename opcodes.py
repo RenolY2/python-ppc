@@ -294,7 +294,7 @@ class LoadWordUpdateIndexed(LoadValueZeroIndexed):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA] + gpr[self.RB])
-        gpr[self.RT] = sign_extend_short(machine.readhalfword(EA))
+        gpr[self.RT] = sign_extend_short(machine.readword(EA))
         gpr[self.RA] = EA 
         
     def __str__(self):
