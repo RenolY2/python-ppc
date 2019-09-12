@@ -282,7 +282,7 @@ class LoadWordIndexed(LoadValueZeroIndexed):
     def execute(self, machine):
         gpr = machine.context.gpr
         
-        EA = add_32bit(gpr[self.RA] + gpr[self.RB])
+        EA = add_32bit(gpr[self.RA], gpr[self.RB])
         gpr[self.RT] = machine.readword(EA)
         gpr[self.RA] = EA 
         
@@ -293,13 +293,142 @@ class LoadWordUpdateIndexed(LoadValueZeroIndexed):
     def execute(self, machine):
         gpr = machine.context.gpr
         
-        EA = add_32bit(gpr[self.RA] + gpr[self.RB])
-        gpr[self.RT] = sign_extend_short(machine.readword(EA))
+        EA = add_32bit(gpr[self.RA], gpr[self.RB])
+        gpr[self.RT] = machine.readword(EA)
         gpr[self.RA] = EA 
         
     def __str__(self):
         return "lwzux r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
 
+
+# Store Value Direct 
+class StoreValue(LoadValueZero):
+    def __init__(self, val):
+        self.opcode, self.RS, self.RA, self.D = parse_dform(val)
+        self.D = sign_extend_short(self.D)
+
+
+class StoreByte(StoreValue):
+    def execute(self, machine):
+        EA = self._get_ea(machine)
+        machine.writebyte(EA, machine.gpr[self.RS])
+    
+    def __str__(self):
+        return "stb r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
+
+class StoreHalfword(StoreValue):
+    def execute(self, machine):
+        EA = self._get_ea(machine)
+        machine.writehalfword(EA, machine.gpr[self.RS])
+    
+    def __str__(self):
+        return "sth r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
+
+class StoreWord(StoreValue):
+    def execute(self, machine):
+        EA = self._get_ea(machine)
+        machine.writeword(EA, machine.gpr[self.RS])
+        
+    def __str__(self):
+        return "stw r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
+
+
+# Store Value + Update variants
+class StoreValueUpdate(StoreValue):
+    def __init__(self, val):
+        super().__init__(val)
+        validate(self.RA != 0)
+    
+   
+class StoreByteUpdate(StoreValueUpdate):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA], self.D)
+        machine.writebyte(EA, gpr[self.RS])
+        gpr[self.RA] = EA
+    
+    def __str__(self):
+        return "stbu r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
+
+
+class StoreHalfwordUpdate(StoreValueUpdate):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA], self.D)
+        machine.writehalfword(EA, gpr[self.RS])
+        gpr[self.RA] = EA
+    
+    def __str__(self):
+        return "sthu r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
+
+
+class StoreWordUpdate(StoreValueUpdate):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA], self.D)
+        machine.writeword(EA, gpr[self.RS])
+        gpr[self.RA] = EA
+        
+    def __str__(self):
+        return "stwu r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
+        
+        
+# Store Value Indexed 
+class StoreValueIndexed(Instruction):
+    def __init__(self, val):
+        self.opcode, self.RS, self.RA, self.RB, self.subopcode, _ = parse_xform(val)
+
+
+class StoreByteZeroIndexed(StoreValueIndexed):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA], gpr[self.RB])
+        machine.writebyte(EA, gpr[self.RS])
+    
+    def __str__(self):
+        return "stbx r{0}, r{1}, r{2}".format(self.RS, self.RA, self.RB)
+        
+        
+class StoreHalfwordZeroIndexed(StoreValueZeroIndexed):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA], gpr[self.RB])
+        machine.writehalfword(EA, gpr[self.RS])
+    
+    def __str__(self):
+        return "sthx r{0}, r{1}, r{2}".format(self.RS, self.RA, self.RB)
+        
+        
+class StoreWordZeroIndexed(StoreValueZeroIndexed):
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA], gpr[self.RB])
+        machine.writeword(EA, gpr[self.RS])
+    
+    def __str__(self):
+        return "stwx r{0}, r{1}, r{2}".format(self.RS, self.RA, self.RB)
+        
+# Store value zero indexed with update
+class StoreValueUpdateIndexed(StoreValueIndexed):
+    def __init__(self, val):
+        super().__init__(val)
+        validate(self.RA != 0)
+    
+    def execute(self, machine):
+        gpr = machine.context.gpr
+        
+        EA = add_32bit(gpr[self.RA], gpr[self.RB])
+        machine.writeword(EA, gpr[self.RS])
+    
+    def __str__(self):
+        return "stwx r{0}, r{1}, r{2}".format(self.RS, self.RA, self.RB)
+     
 
 if __name__ == "__main__":
     lbz = LoadByteZero(0x80a400d8)
