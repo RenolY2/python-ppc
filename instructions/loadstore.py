@@ -396,6 +396,42 @@ class StoreWordUpdateIndexed(StoreValueIndexed):
         return "stwux r{0}, r{1}, r{2}".format(self.RS, self.RA, self.RB)
 
 
+
+class LoadMultipleWord(LoadValueZero):
+    def __init__(self, val):
+        super().__init__(val)
+        validate(self.RA < self.RT)
+        
+    def execute(self, machine):
+        EA = self._get_ea(machine)
+        gpr = machine.context.gpr 
+        
+        r = self.RT 
+        
+        while r <= 31:
+            gpr[r] = machine.readword(EA)
+            r += 1 
+            EA += 4 
+    
+    def __str__(self):
+        return "lmw r{0}, {1}({2})".format(self.RT, self.D, self.RA)
+        
+        
+class StoreMultipleWord(LoadValueZero):
+    def execute(self, machine):
+        EA = self._get_ea(machine)
+        gpr = machine.context.gpr 
+        
+        r = self.RT 
+        
+        while r <= 31:
+            machine.writeword(EA, gpr[r])
+            r += 1 
+            EA += 4 
+    
+    def __str__(self):
+        return "stmw r{0}, {1}({2})".format(self.RT, self.D, self.RA)
+
 if __name__ == "__main__":
     lbz = LoadByteZero(0x80a400d8)
     print(lbz)
