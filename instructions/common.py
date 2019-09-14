@@ -4,8 +4,7 @@ def validate(assertion):
 
 
 def get_bits(val, start, end):
-    size = end-start 
-    
+    size = end-start + 1
     return (val >> (31-end)) & (2**size -1)
 
 

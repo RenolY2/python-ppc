@@ -1,13 +1,33 @@
+import os 
+from io import BytesIO
+from struct import pack, unpack 
+from instructions.dispatcher import parse_instruction
+
 class PPCContext(object):
     def __init__(self):
         self.gpr = [0 for x in range(32)] # 32 General Purpose Registers
         self.fpr = [0.0 for x in range(32)] # 32 Floating Point Registers 
         self.cr = ConditionalRegister() # Conditional register
-
+        self.xer = XerRegister()
+        self.pc = 0 
+        self.lr = 0
+        
+    def __str__(self):
+        out = ""
+        out += ", ".join(["r{0}: {1:x}".format(i, self.gpr[i]) for i in range(32)]) + "\n"
+        out += ", ".join(["r{0}: {1}".format(i, self.fpr[i]) for i in range(32)]) + "\n" 
+        out += str(self.cr) + "\n"
+        out += str(self.xer) + "\n"
+        out += "PC: {0:x}".format(self.pc) + "\n"
+        out += "LR: {0:x}".format(self.lr) 
+        
+        return out 
+        
 LT = 0b1000 # result is negative, or less than 
 GT = 0b0100 # result is positive and not zero, or bigger than  
 EQ = 0b0010 # result is zero, or equal to 
 SO = 0b0001 # summary overflow or floating-point unordered (frA or frB or both are NaN)
+
 
 class ConditionalRegister(object):
     def __init__(self):
@@ -59,6 +79,8 @@ class ConditionalRegister(object):
                 out += "CR{0}: GT, ".format(i)
             elif compare_result == EQ:
                 out += "CR{0}: EQ, ".format(i)
+            elif compare_result == 0:
+                out += "CR{0}: -, ".format(i)
             else:
                 raise RuntimeError("Invalid compare result: {0}".format(compare_result))
                 
@@ -95,15 +117,127 @@ class XerRegister(object):
         
     
 class Machine(object):
-    def __init__(self):
-        pass
+    def __init__(self, memory_sections):
+        print(memory_sections)
+        self.context = PPCContext()
         
+        self.memory_sections = []
+        for cached_start, uncached_start, size in memory_sections:
+            self.memory_sections.append((cached_start, uncached_start, size, BytesIO(b"\x00"*size)))
+    
+    def load_binary(self, address, f):
+        self.write_data(address, f.read())
+    
+    def dump_memory(self, dirpath):
+        for cached_start, _, size, data in self.memory_sections:
+            name = "memdump_{0:x}.bin".format(cached_start)
+            with open(os.path.join(dirpath, name), "wb") as f:
+                data.seek(0)
+                f.write(data.read())
+    
+    def write_data(self, address, data):
+        for cached_start, uncached_start, size, mem in self.memory_sections:
+            cached_end = cached_start + size 
+            uncached_end = uncached_start + size 
+            
+            if cached_start <= address < cached_end:
+                if address+len(data) >= cached_end:
+                    raise RuntimeError("Data to be written exceeds end of memory section") 
+                    
+                relative = address - cached_start 
+                mem.seek(relative)
+                mem.write(data)
+                return 
+                
+            elif uncached_start <= address < uncached_end:
+                if address+len(data) >= uncached_end:
+                    raise RuntimeError("Data to be written exceeds end of memory section") 
+                    
+                relative = address - uncached_start 
+                mem.seek(relative)
+                mem.write(data)
+                return 
+                
+        raise RuntimeError("Reading from unmapped memory: {0:x}".format(address))
+    
+    def read_data(self, address, len):
+        for cached_start, uncached_start, size, mem in self.memory_sections:
+            
+            cached_end = cached_start + size 
+            uncached_end = uncached_start + size 
+            
+            if cached_start <= address < cached_end:
+                if address+len >= cached_end:
+                    raise RuntimeError("Data to be read exceeds end of memory section") 
+                    
+                relative = address - cached_start 
+                mem.seek(relative)
+                return mem.read(len)
+                
+            elif uncached_start <= address < uncached_end:
+                if address+len >= uncached_end:
+                    raise RuntimeError("Data to be read exceeds end of memory section") 
+                    
+                relative = address - uncached_start 
+                mem.seek(relative)
+                return mem.read(len)
         
+        raise RuntimeError("Writing to unmapped memory: {0:x}".format(address))
+    
+    def read_byte(self, address):
+        return unpack("B", self.read_data(address, 1))[0]
+    
+    def read_halfword(self, address):
+        return unpack(">H", self.read_data(address, 2))[0]
+    
+    def read_word(self, address):
+        return unpack(">I", self.read_data(address, 4))[0]
+    
+    def write_byte(self, address, value):
+        self.write_data(address, pack("B", value&0xFF))
+    
+    def write_halfword(self, address, value):
+        self.write_data(address, pack(">H", value&0xFFFF))
+    
+    def write_word(self, address, value):
+        self.write_data(address, pack(">I", value&0xFFFFFFFF))
+    
+    def goto(self, address):
+        self.context.pc = address 
+    
+    def execute_next(self):
+        assert self.context.pc % 4 == 0
+        val = self.read_word(self.context.pc)
+        instruction = parse_instruction(val)
+        print(instruction)
+        instruction.execute(self)
+        
+        self.context.pc += 4
+    
+    def run(self):
+        while True:
+            self.execute_next()
+        
+class GCMachine(Machine):
+    def __init__(self, memsize=0x01800000):
+        super().__init__([(0x80000000, 0xC0000000, memsize)])
+
+
+    
+    
 if __name__ == "__main__":
-    cr = ConditionalRegister()
-    cr.from_value(0x40000088)
-    print(cr)
-    cr.from_value(0x20000088)
-    print(cr)
-    print(cr.is_equal(0))
+    gc = GCMachine()
+    with open("data.bin", "rb") as f:
+        gc.load_binary(0x80000000, f)
+    gc.goto(0x80000000)
+    
+    print(gc.context)
+    print("hm", hex(gc.read_word(gc.context.pc)))
+    gc.context.gpr[3] = 0x80000000
+    gc.execute_next()
+    gc.execute_next()
+    gc.context.gpr[0] = 0xABCDEFAA
+    gc.execute_next()
+    gc.execute_next()
+    gc.dump_memory(".")
     

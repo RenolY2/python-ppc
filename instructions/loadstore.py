@@ -1,4 +1,4 @@
-
+from .common import *
 # Base classes 
 
 class LoadValueZero(Instruction):
@@ -14,7 +14,7 @@ class LoadValueZero(Instruction):
         else:
             b = gpr[self.RA] 
         
-        EA = add_32bit(b + self.D)
+        EA = add_32bit(b, self.D)
         
         return EA 
 
@@ -40,6 +40,11 @@ class StoreValue(LoadValueZero):
     def __init__(self, val):
         self.opcode, self.RS, self.RA, self.D = parse_dform(val)
         self.D = sign_extend_short(self.D)
+        
+# Store Value Indexed 
+class StoreValueIndexed(Instruction):
+    def __init__(self, val):
+        self.opcode, self.RS, self.RA, self.RB, self.subopcode, _ = parse_xform(val)
 
 
 class StoreValueUpdate(StoreValue):
@@ -48,7 +53,7 @@ class StoreValueUpdate(StoreValue):
         validate(self.RA != 0)
         
         
-class StoreValueUpdateIndexed(StoreValueIndexed):
+class StoreValueUpdateIndexed(LoadValueZeroIndexed):
     def __init__(self, val):
         super().__init__(val)   
 
@@ -57,7 +62,7 @@ class StoreValueUpdateIndexed(StoreValueIndexed):
 class LoadByteZero(LoadValueZero):
     def execute(self, machine):
         EA = self._get_ea(machine)
-        machine.context.gpr[self.rt] = machine.readbyte(EA)
+        machine.context.gpr[self.rt] = machine.read_byte(EA)
     
     def __str__(self):
         return "lbz r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
@@ -66,7 +71,7 @@ class LoadByteZero(LoadValueZero):
 class LoadHalfwordZero(LoadValueZero):
     def execute(self, machine):
         EA = self._get_ea(machine)
-        machine.context.gpr[self.RT] = machine.readhalfword(EA)
+        machine.context.gpr[self.RT] = machine.read_halfword(EA)
         self.context.gpr[self.RA] = EA 
     
     def __str__(self):
@@ -77,7 +82,7 @@ class LoadHalfwordAlgebraic(LoadByteZero):
         gpr = machine.context.gpr
         EA = add_32bit(gpr[self.RA] + self.D)
         
-        gpr[self.rt] = sign_extend_short(machine.readhalfword(EA))
+        gpr[self.rt] = sign_extend_short(machine.read_halfword(EA))
     
     def __str__(self):
         return "lha r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
@@ -86,7 +91,7 @@ class LoadHalfwordAlgebraic(LoadByteZero):
 class LoadWordZero(LoadValueZero):
     def execute(self, machine):
         EA = self._get_ea(machine)
-        machine.context.gpr[self.RT] = machine.readword(EA) 
+        machine.context.gpr[self.RT] = machine.read_word(EA) 
     
     def __str__(self):
         return "lwz r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
@@ -96,7 +101,7 @@ class LoadByteZeroUpdate(LoadValueZero):
         gpr = machine.context.gpr
         EA = add_32bit(gpr[self.RA] + self.D)
         
-        machine.context.gpr[self.RT] = machine.readbyte(EA)
+        machine.context.gpr[self.RT] = machine.read_byte(EA)
         self.context.gpr[self.RA] = EA 
     
     def __str__(self):
@@ -112,7 +117,7 @@ class LoadHalfwordZeroUpdate(LoadValueZero):
         gpr = machine.context.gpr
         EA = add_32bit(gpr[self.RA] + self.D)
         
-        machine.context.gpr[self.RT] = machine.readhalfword(EA)
+        machine.context.gpr[self.RT] = machine.read_halfword(EA)
         self.context.gpr[self.RA] = EA 
     
     def __str__(self):
@@ -129,7 +134,7 @@ class LoadHalfwordAlgebraicUpdate(LoadByteZero):
         gpr = machine.context.gpr
         EA = add_32bit(gpr[self.RA] + self.D)
         
-        gpr[self.rt] = sign_extend_short(machine.readhalfword(EA))
+        gpr[self.rt] = sign_extend_short(machine.read_halfword(EA))
         self.context.gpr[self.RA] = EA
         
     def __str__(self):
@@ -142,7 +147,7 @@ class LoadWordZeroUpdate(LoadValueZero):
         gpr = machine.context.gpr
         EA = add_32bit(gpr[self.RA] + self.D)
         
-        gpr[self.RT] = machine.readword(EA)
+        gpr[self.RT] = machine.read_word(EA)
         gpr[self.RA] = EA 
     
     def __str__(self):
@@ -156,7 +161,7 @@ class LoadWordZeroUpdate(LoadValueZero):
 class LoadByteZeroIndexed(LoadValueZeroIndexed):
     def execute(self, machine):
         EA = self._get_ea(machine)
-        machine.context.gpr[self.RT] = machine.readbyte(EA)
+        machine.context.gpr[self.RT] = machine.read_byte(EA)
 
     def __str__(self):
         return "lbzx r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
@@ -166,7 +171,7 @@ class LoadByteZeroIndexed(LoadValueZeroIndexed):
 class LoadHalfwordZeroIndexed(LoadValueZeroIndexed):
     def execute(self, machine):
         EA = self._get_ea(machine)
-        machine.context.gpr[self.RT] = machine.readhalfword(EA)
+        machine.context.gpr[self.RT] = machine.read_halfword(EA)
 
     def __str__(self):
         return "lhzx r{0}, r{1}, r{2}".format(self.RT, self.RA, self.RB)
@@ -187,7 +192,7 @@ class LoadWordIndexed(LoadValueZeroIndexed):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA], gpr[self.RB])
-        gpr[self.RT] = machine.readword(EA)
+        gpr[self.RT] = machine.read_word(EA)
         gpr[self.RA] = EA 
         
     def __str__(self):
@@ -200,7 +205,7 @@ class LoadByteZeroUpdateIndexed(LoadValueZeroIndexed):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA] + gpr[self.RB])
-        gpr[self.RT] = machine.readbyte(EA)
+        gpr[self.RT] = machine.read_byte(EA)
         gpr[self.RA] = EA 
         
     def __str__(self):
@@ -212,7 +217,7 @@ class LoadHalfwordZeroUpdateIndexed(LoadValueZeroIndexed):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA] + gpr[self.RB])
-        gpr[self.RT] = machine.readhalfword(EA)
+        gpr[self.RT] = machine.read_halfword(EA)
         gpr[self.RA] = EA 
         
     def __str__(self):
@@ -224,7 +229,7 @@ class LoadHalfwordAlgebraicUpdateIndexed(LoadValueZeroIndexed):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA] + gpr[self.RB])
-        gpr[self.RT] = sign_extend_short(machine.readhalfword(EA))
+        gpr[self.RT] = sign_extend_short(machine.read_halfword(EA))
         gpr[self.RA] = EA 
         
     def __str__(self):
@@ -236,7 +241,7 @@ class LoadWordUpdateIndexed(LoadValueZeroIndexed):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA], gpr[self.RB])
-        gpr[self.RT] = machine.readword(EA)
+        gpr[self.RT] = machine.read_word(EA)
         gpr[self.RA] = EA 
         
     def __str__(self):
@@ -248,7 +253,7 @@ class LoadWordUpdateIndexed(LoadValueZeroIndexed):
 class StoreByte(StoreValue):
     def execute(self, machine):
         EA = self._get_ea(machine)
-        machine.writebyte(EA, machine.gpr[self.RS])
+        machine.write_byte(EA, machine.gpr[self.RS])
     
     def __str__(self):
         return "stb r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
@@ -257,7 +262,7 @@ class StoreByte(StoreValue):
 class StoreHalfword(StoreValue):
     def execute(self, machine):
         EA = self._get_ea(machine)
-        machine.writehalfword(EA, machine.gpr[self.RS])
+        machine.write_halfword(EA, machine.gpr[self.RS])
     
     def __str__(self):
         return "sth r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
@@ -266,7 +271,7 @@ class StoreHalfword(StoreValue):
 class StoreWord(StoreValue):
     def execute(self, machine):
         EA = self._get_ea(machine)
-        machine.writeword(EA, machine.gpr[self.RS])
+        machine.write_word(EA, machine.context.gpr[self.RS])
         
     def __str__(self):
         return "stw r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
@@ -278,7 +283,7 @@ class StoreByteUpdate(StoreValueUpdate):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA], self.D)
-        machine.writebyte(EA, gpr[self.RS])
+        machine.write_byte(EA, gpr[self.RS])
         gpr[self.RA] = EA
     
     def __str__(self):
@@ -290,7 +295,7 @@ class StoreHalfwordUpdate(StoreValueUpdate):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA], self.D)
-        machine.writehalfword(EA, gpr[self.RS])
+        machine.write_halfword(EA, gpr[self.RS])
         gpr[self.RA] = EA
     
     def __str__(self):
@@ -302,17 +307,13 @@ class StoreWordUpdate(StoreValueUpdate):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA], self.D)
-        machine.writeword(EA, gpr[self.RS])
+        machine.write_word(EA, gpr[self.RS])
         gpr[self.RA] = EA
         
     def __str__(self):
         return "stwu r{0}, {1}(r{2})".format(self.RS, self.D, self.RA)
         
         
-# Store Value Indexed 
-class StoreValueIndexed(Instruction):
-    def __init__(self, val):
-        self.opcode, self.RS, self.RA, self.RB, self.subopcode, _ = parse_xform(val)
 
 
 class StoreByteIndexed(StoreValueIndexed):
@@ -324,13 +325,13 @@ class StoreByteIndexed(StoreValueIndexed):
             b = gpr[self.RA] 
             
         EA = add_32bit(b, gpr[self.RB])
-        machine.writebyte(EA, gpr[self.RS])
+        machine.write_byte(EA, gpr[self.RS])
     
     def __str__(self):
         return "stbx r{0}, r{1}, r{2}".format(self.RS, self.RA, self.RB)
         
         
-class StoreHalfwordIndexed(StoreValueZeroIndexed):
+class StoreHalfwordIndexed(StoreValueIndexed):
     def execute(self, machine):
         gpr = machine.context.gpr
         if self.RA == 0:
@@ -339,13 +340,13 @@ class StoreHalfwordIndexed(StoreValueZeroIndexed):
             b = gpr[self.RA] 
             
         EA = add_32bit(b, gpr[self.RB])
-        machine.writehalfword(EA, gpr[self.RS])
+        machine.write_halfword(EA, gpr[self.RS])
     
     def __str__(self):
         return "sthx r{0}, r{1}, r{2}".format(self.RS, self.RA, self.RB)
         
         
-class StoreWordIndexed(StoreValueZeroIndexed):
+class StoreWordIndexed(StoreValueIndexed):
     def execute(self, machine):
         gpr = machine.context.gpr
         if self.RA == 0:
@@ -354,7 +355,7 @@ class StoreWordIndexed(StoreValueZeroIndexed):
             b = gpr[self.RA] 
             
         EA = add_32bit(b, gpr[self.RB])
-        machine.writeword(EA, gpr[self.RS])
+        machine.write_word(EA, gpr[self.RS])
     
     def __str__(self):
         return "stwx r{0}, r{1}, r{2}".format(self.RS, self.RA, self.RB)
@@ -365,7 +366,7 @@ class StoreByteUpdateIndexed(StoreValueIndexed):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA], gpr[self.RB])
-        machine.writebyte(EA, gpr[self.RS])
+        machine.write_byte(EA, gpr[self.RS])
         gpr[self.RA] = EA 
     
     def __str__(self):
@@ -377,7 +378,7 @@ class StoreHalfwordUpdateIndexed(StoreValueIndexed):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA], gpr[self.RB])
-        machine.writehalfword(EA, gpr[self.RS])
+        machine.write_halfword(EA, gpr[self.RS])
         gpr[self.RA] = EA 
     
     def __str__(self):
@@ -389,7 +390,7 @@ class StoreWordUpdateIndexed(StoreValueIndexed):
         gpr = machine.context.gpr
         
         EA = add_32bit(gpr[self.RA], gpr[self.RB])
-        machine.writeword(EA, gpr[self.RS])
+        machine.write_word(EA, gpr[self.RS])
         gpr[self.RA] = EA 
     
     def __str__(self):
@@ -409,7 +410,7 @@ class LoadMultipleWord(LoadValueZero):
         r = self.RT 
         
         while r <= 31:
-            gpr[r] = machine.readword(EA)
+            gpr[r] = machine.read_word(EA)
             r += 1 
             EA += 4 
     
@@ -425,7 +426,7 @@ class StoreMultipleWord(LoadValueZero):
         r = self.RT 
         
         while r <= 31:
-            machine.writeword(EA, gpr[r])
+            machine.write_word(EA, gpr[r])
             r += 1 
             EA += 4 
     
