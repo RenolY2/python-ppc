@@ -69,9 +69,24 @@ def sign_extend_short(val):
         return val 
 
 
+def sign_extend_24bit(val):
+    if val & (1 << 24):
+        return 0xFF000000 | val 
+    else:
+        return val 
+
+
 def add_32bit(val1, val2):
     return (val1 + val2) & 0xFFFFFFFF
     
-    
+
+def signed(val1):
+    assert -0x80000000 <= val1 <= 0x7FFFFFFF 
+    if val1 >= 0:
+        return val1 
+    else:
+        return 2**32 + val1 
+
+
 class Instruction(object):
     pass
