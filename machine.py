@@ -11,6 +11,7 @@ class PPCContext(object):
         self.xer = XerRegister()
         self.pc = 0 
         self.lr = 0
+        self.ctr = 0
         
     def __str__(self):
         out = ""
@@ -217,6 +218,7 @@ class Machine(object):
     def run(self):
         while True:
             self.execute_next()
+        
         
 class GCMachine(Machine):
     def __init__(self, memsize=0x01800000):
