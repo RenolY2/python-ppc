@@ -206,6 +206,11 @@ class Machine(object):
     def goto(self, address):
         self.context.pc = address 
     
+    def decrement_ctr(self):
+        self.context.ctr -= 1
+        if self.context.ctr < 0:
+            self.context.ctr = 0xFFFFFFFF
+    
     def execute_next(self):
         assert self.context.pc % 4 == 0
         val = self.read_word(self.context.pc)
