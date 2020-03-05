@@ -63,14 +63,14 @@ def parse_xform(val):
 
 
 def sign_extend_short(val):
-    if val & (1 << 16):
+    if val & (1 << 15):
         return 0xFFFF0000 | val 
     else:
         return val 
 
 
 def sign_extend_24bit(val):
-    if val & (1 << 24):
+    if val & (1 << 23):
         return 0xFF000000 | val 
     else:
         return val 
@@ -87,6 +87,13 @@ def signed(val1):
     else:
         return 2**32 + val1 
 
+def to_python_int(val):
+    assert 0 <= val < (2**32) 
+    if val & (1<<31):
+        return val - (2**32)
+    else:
+        return val 
+    
 
 class Instruction(object):
     pass
