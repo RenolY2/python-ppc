@@ -16,7 +16,7 @@ class PPCContext(object):
     def __str__(self):
         out = ""
         out += ", ".join(["r{0}: {1:x}".format(i, self.gpr[i]) for i in range(32)]) + "\n"
-        out += ", ".join(["r{0}: {1}".format(i, self.fpr[i]) for i in range(32)]) + "\n" 
+        out += ", ".join(["f{0}: {1}".format(i, self.fpr[i]) for i in range(32)]) + "\n" 
         out += str(self.cr) + "\n"
         out += str(self.xer) + "\n"
         out += "PC: {0:x}".format(self.pc) + "\n"
@@ -247,4 +247,18 @@ if __name__ == "__main__":
     gc.execute_next()
     gc.execute_next()
     gc.dump_memory(".")
+    
+    with open("arithmetictest.bin", "rb") as f:
+        gc.load_binary(0x80000000, f)
+    gc.goto(0x80000000)
+    gc.execute_next()
+    assert gc.context.gpr[3] == 5
+    gc.execute_next()
+    assert gc.context.gpr[3] == 10
+    gc.execute_next()
+    assert gc.context.gpr[3] == 9
+    gc.execute_next()
+    print(hex(gc.context.gpr[1]))
+    gc.execute_next()
+    print(hex(gc.context.gpr[1]))
     
