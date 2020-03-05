@@ -1,9 +1,12 @@
 from .loadstore import *
+from .fixedpointarithmetic import *
 
 def parse_indexed(val):
     pass 
 
 instructions = {
+14: AddImmediate,
+15: AddImmediateShifted,
 32: LoadWordZero,
 33: LoadWordZeroUpdate,
 34: LoadByteZero,
