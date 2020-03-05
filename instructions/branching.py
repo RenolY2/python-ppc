@@ -50,7 +50,7 @@ def BranchConditional(Instruction):
         if decrement_ctr:
             machine.decrement_ctr()
             
-        cond_ok = self.BO & BO5 | (self.BO & BO4 ^ not (machine.context.cr[creg] & (1 << (3-crbit)))
+        cond_ok = self.BO & BO5 | ((self.BO & BO4) ^ not (machine.context.cr[creg] & (1 << (3-crbit)))
         ctr_ok = self.BO & BO3 | (machine.context.ctr != 0) ^ branch_on_zero
         
         if cond_ok and ctr_ok:
