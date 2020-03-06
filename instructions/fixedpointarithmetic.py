@@ -98,3 +98,66 @@ class SubtractFrom(Instruction):
             instruction += "."
             
         return "{0} r{1}, r{3}, r{2}".format(instruction, self.RT, self.RA, self.RB)
+
+class SubtractFromImmediateCarrying(Instruction):
+    def __init__(self, val):
+        self.opcode, self.RT, self.RA, self.SI = parse_dform(val)
+        self.SI = sign_extend_short(self.SI)
+    
+    def execute(self, machine):
+        gpr = machine.context.gpr 
+        
+        gpr[self.RT], ov = add_32bit_overflow(negate(gpr[self.RA]), self.SI)
+        
+        if ov:
+            machine.xer.CA = 1
+        else:
+            machine.xer.CA = 0
+        
+        
+    def __str__(self):
+        SI = to_python_int(self.SI)
+        
+        return "subfic r{0}, r{1}, {2}".format(self.RT, self.RA, SI)
+        
+        
+class AddImmediateCarrying(Instruction):
+    def __init__(self, val):
+        self.opcode, self.RT, self.RA, self.SI = parse_dform(val)
+        self.SI = sign_extend_short(self.SI)
+    
+    def execute(self, machine):
+        gpr = machine.context.gpr 
+        
+        gpr[self.RT], ov = add_32bit_overflow(gpr[self.RA], self.SI)
+        if ov:
+            machine.context.xer.CA = 1
+        else:
+            machine.context.xer.CA = 0
+    
+    def __str__(self):
+        SI = to_python_int(self.SI)
+        
+        return "addic r{0}, r{1}, {2}".format(self.RT, self.RA, SI)
+        
+
+class AddImmediateCarryingRecord(Instruction):
+    def __init__(self, val):
+        self.opcode, self.RT, self.RA, self.SI = parse_dform(val)
+        self.SI = sign_extend_short(self.SI)
+    
+    def execute(self, machine):
+        gpr = machine.context.gpr 
+        
+        gpr[self.RT], ov = add_32bit_overflow(gpr[self.RA], self.SI)
+        if ov:
+            machine.context.xer.CA = 1
+        else:
+            machine.context.xer.CA = 0
+        
+        machine.context.cr.compare(0, to_python_int(gpr[self.RT]), 0)
+    
+    def __str__(self):
+        SI = to_python_int(self.SI)
+        
+        return "addic. r{0}, r{1}, {2}".format(self.RT, self.RA, SI)

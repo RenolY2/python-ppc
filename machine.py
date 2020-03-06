@@ -247,6 +247,20 @@ class Machine(object):
             if self.context.pc == 0xBABABAB0:
                 break 
     
+    def call_function(self, address, *args):
+        gpr_arg = 3
+        fpr_arg = 1
+        
+        for arg in args:
+            if isinstance(arg, int):
+                self.context.gpr[gpr_arg] = arg
+                gpr_arg += 1
+                if gpr_arg > 8:
+                    raise RuntimeError("Too many integer arguments")
+        
+        self.goto(address)
+        self.execute_function()
+    
     def run(self):
         while True:
             self.execute_next()
@@ -288,10 +302,15 @@ if __name__ == "__main__":
     with open("mario.dol", "rb") as f:
         gc.load_dol(f)
     gc.write_data(0x80500000, b"ThisIsALengthOf17\x00")
-    gc.goto(0x8033b584)
+    """gc.goto(0x8033b584)
     gc.context.gpr[3] = 0x80500000 
     gc.execute_function()
-    print(to_python_int(gc.context.gpr[3]))
+    print(to_python_int(gc.context.gpr[3]))"""
+    
+    
+    
+    gc.call_function(0x8033b48c, 0x80500040, 0x80500000, 18)
+    gc.dump_memory(".")
     #for i in range(10):
     #    print("-----")
     #    gc.execute_next()

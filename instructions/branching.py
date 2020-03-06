@@ -4,7 +4,7 @@ from .common import *
 class Branch(Instruction):
     def __init__(self, val):
         self.opcode, self.target_addr, self.AA, self.LK = parse_iform(val)
-        self.target_addr = sign_extend_24bit(self.target_addr)
+        self.target_addr = (sign_extend_24bit(self.target_addr) * 4) & 0xFFFFFFFF
         
     def execute(self, machine):
         pc = machine.context.pc 

@@ -96,6 +96,7 @@ class LoadWordZero(LoadValueZero):
     def __str__(self):
         return "lwz r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)
 
+
 class LoadByteZeroUpdate(LoadValueZero):
     def execute(self, machine):
         gpr = machine.context.gpr

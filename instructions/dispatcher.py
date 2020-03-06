@@ -6,8 +6,11 @@ from .branching import *
 from .logical import * 
 
 instructions = {
+8: SubtractFromImmediateCarrying,
 10: CompareLogicalImmediate,
 11: CompareImmediate,
+12: AddImmediateCarrying,
+13: AddImmediateCarryingRecord,
 14: AddImmediate,
 15: AddImmediateShifted,
 16: BranchConditional,
@@ -33,12 +36,13 @@ instructions = {
 44: StoreHalfword,
 45: StoreHalfwordUpdate
 }
+
 instructions_x = {
     0: Compare,
     19: MoveFromCR,
     26: CountLeadingZerosWord,
     28: AND,
-    60: AndWithComplement,
+    60: ANDWithComplement,
     124: NOR,
     
     144: MoveToCRFields,
@@ -48,7 +52,7 @@ instructions_x = {
     339: MoveFromSPR,
     412: ORWithComplement,
     444: OR,
-    467: MoveToSPR
+    467: MoveToSPR,
     476: NAND,
     922: ExtendSignHalfword,
     954: ExtendSignByte,
