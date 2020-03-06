@@ -99,10 +99,10 @@ class LoadWordZero(LoadValueZero):
 class LoadByteZeroUpdate(LoadValueZero):
     def execute(self, machine):
         gpr = machine.context.gpr
-        EA = add_32bit(gpr[self.RA] + self.D)
+        EA = add_32bit(gpr[self.RA], self.D)
         
         machine.context.gpr[self.RT] = machine.read_byte(EA)
-        self.context.gpr[self.RA] = EA 
+        machine.context.gpr[self.RA] = EA 
     
     def __str__(self):
         return "lbzu r{0}, {1}(r{2})".format(self.RT, self.D, self.RA)

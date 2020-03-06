@@ -2,6 +2,9 @@ import os
 from io import BytesIO
 from struct import pack, unpack 
 from instructions.dispatcher import parse_instruction
+from instructions.common import to_python_int
+from dolreader import DolFile
+
 
 class PPCContext(object):
     def __init__(self):
@@ -23,12 +26,12 @@ class PPCContext(object):
         out += "LR: {0:x}".format(self.lr) 
         
         return out 
+
         
 LT = 0b1000 # result is negative, or less than 
 GT = 0b0100 # result is positive and not zero, or bigger than  
 EQ = 0b0010 # result is zero, or equal to 
 SO = 0b0001 # summary overflow or floating-point unordered (frA or frB or both are NaN)
-
 
 class ConditionalRegister(object):
     def __init__(self):
@@ -46,15 +49,18 @@ class ConditionalRegister(object):
             # SO bit can only be cleared by MTSPR/MCRXR
             self.cr[index] = value | (self.cr[index] & SO)
         
-    def from_value(self, val):
+    def from_value(self, val, mask=0xFF):
         for i in range(8):
             bitfield = (val >> (7-i)*4) & 0b1111 
-            self.cr[i] = bitfield 
+            if mask & (1 << i):
+                self.cr[i] = bitfield 
     
     def to_value(self):
         val = 0
         for i in range(8):
             val = val | (self.cr[i] << (7-i)*4)
+        
+        return val
     
     def clear(self, index):
         self.cr[index] = 0
@@ -67,6 +73,14 @@ class ConditionalRegister(object):
     
     def is_bigger(self, index):
         return self.cr[index] == GT
+    
+    def compare(self, index, val, ref):
+        if val == ref:
+            self[index] = EQ 
+        elif val < ref:
+            self[index] = LT 
+        else:
+            self[index] = GT 
     
     def __str__(self):
         out = ""
@@ -128,6 +142,12 @@ class Machine(object):
     
     def load_binary(self, address, f):
         self.write_data(address, f.read())
+    
+    def load_dol(self, f):
+        dol = DolFile(f)
+        for offset, address, size in dol.sections:
+            dol._rawdata.seek(offset)
+            self.write_data(address, dol._rawdata.read(size))
     
     def dump_memory(self, dirpath):
         for cached_start, _, size, data in self.memory_sections:
@@ -216,9 +236,16 @@ class Machine(object):
         val = self.read_word(self.context.pc)
         instruction = parse_instruction(val)
         print(instruction)
-        instruction.execute(self)
-        
         self.context.pc += 4
+        instruction.execute(self)
+    
+    def execute_function(self):
+        self.context.lr = 0xBABABAB0
+        while True:
+            self.execute_next()
+            #print(hex(self.context.lr), hex(self.context.pc))
+            if self.context.pc == 0xBABABAB0:
+                break 
     
     def run(self):
         while True:
@@ -234,7 +261,7 @@ class GCMachine(Machine):
     
 if __name__ == "__main__":
     gc = GCMachine()
-    with open("data.bin", "rb") as f:
+    """with open("data.bin", "rb") as f:
         gc.load_binary(0x80000000, f)
     gc.goto(0x80000000)
     
@@ -246,19 +273,27 @@ if __name__ == "__main__":
     gc.context.gpr[0] = 0xABCDEFAA
     gc.execute_next()
     gc.execute_next()
-    gc.dump_memory(".")
+    gc.dump_memory(".")"""
     
+    """
     with open("arithmetictest.bin", "rb") as f:
         gc.load_binary(0x80000000, f)
     gc.goto(0x80000000)
-    gc.execute_next()
-    assert gc.context.gpr[3] == 5
-    gc.execute_next()
-    assert gc.context.gpr[3] == 10
-    gc.execute_next()
-    assert gc.context.gpr[3] == 9
-    gc.execute_next()
-    print(hex(gc.context.gpr[1]))
-    gc.execute_next()
-    print(hex(gc.context.gpr[1]))
+    for i in range(16):
+        gc.execute_next()
+        print(gc.context)
+    
+    """
+    
+    with open("mario.dol", "rb") as f:
+        gc.load_dol(f)
+    gc.write_data(0x80500000, b"ThisIsALengthOf17\x00")
+    gc.goto(0x8033b584)
+    gc.context.gpr[3] = 0x80500000 
+    gc.execute_function()
+    print(to_python_int(gc.context.gpr[3]))
+    #for i in range(10):
+    #    print("-----")
+    #    gc.execute_next()
+    #    print(gc.context)
     
