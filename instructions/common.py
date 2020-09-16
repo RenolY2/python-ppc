@@ -93,6 +93,18 @@ def parse_xflform(val):
     return opcode, flm, frb, xo, rc
     
 
+def parse_mform(val):
+    opcode = get_bits(val, 0, 5)
+    rs = get_bits(val, 6, 10)
+    ra = get_bits(val, 11, 15)
+    rb = get_bits(val, 16, 20)
+    mb = get_bits(val, 21, 25)
+    me = get_bits(val, 26, 30)
+    rc = get_bit(val, 31)
+    
+    return opcode, rs, ra, rb, mb, me, rc
+    
+    
 def sign_extend_short(val):
     if val & (1 << 15):
         return 0xFFFF0000 | val 
