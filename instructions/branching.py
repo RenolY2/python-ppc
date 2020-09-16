@@ -14,7 +14,7 @@ class Branch(Instruction):
             machine.goto(self.target_addr)
         else:
             # Relative address 
-            machine.goto(add_32bit(pc, self.target_addr))
+            machine.goto(add_32bit(pc-4, self.target_addr))
         
         if self.LK:
             # Update LR register
